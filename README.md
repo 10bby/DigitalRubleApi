@@ -8,7 +8,7 @@ Digital Ruble API — это интерфейс для взаимодейств�
 - ✅ Переводить средства между пользователями
 - ✅ Просматривать и покупать NFT
 - ✅ Передавать NFT между пользователями
-- ✅ Получать информацию о пользователях
+- ✅ Получать информацию о пользователях и их кастомных именах
 
 ---
 
@@ -60,7 +60,7 @@ GET /balance/{user_id}
 **Пример:**
 ```bash
 curl -H "Authorization: Bearer YOUR_TOKEN" \
-     http://localhost:8000/balance/123456789
+     http://nyxaro.ru:6666/balance/123456789
 ```
 
 **Ответ:**
@@ -87,11 +87,15 @@ GET /user/{user_id}
 {
   "user_id": 123456789,
   "username": "john_doe",
-  "wallet": "DRabc123def456",
+  "wallet": "John",
   "custom_names": ["John", "Doe"],
   "success": true
 }
 ```
+
+**Особенности:**
+- `wallet` - отображает основное кастомное имя, если оно установлено
+- `custom_names` - список всех кастомных имен пользователя
 
 ---
 
@@ -174,6 +178,17 @@ GET /nft/list
       "available": true,
       "description": "Ограниченная коллекция NFT медведей",
       "gif_path": "Gif/mishka.gif"
+    },
+    {
+      "nft_id": 2,
+      "name": "Кастомное имя",
+      "model": "CustomName",
+      "price": 5000.0,
+      "total_supply": 50,
+      "current_supply": 12,
+      "available": true,
+      "description": "Создайте уникальное имя для вашего кошелька",
+      "gif_path": "Gif/customname.gif"
     }
   ]
 }
@@ -218,11 +233,23 @@ GET /user/{user_id}/nfts
       "nft_id": 1,
       "rarity": null,
       "link": "https://t.me/DigitalRubleBot?start=Bear_5"
+    },
+    {
+      "name": "МойКошелек",
+      "model": "CustomName",
+      "serial_number": 3,
+      "nft_id": 2,
+      "rarity": null,
+      "link": "https://t.me/DigitalRubleBot?start=CustomName_3"
     }
   ],
   "success": true
 }
 ```
+
+**Особенности:**
+- Для `CustomName` NFT отображается кастомное имя вместо стандартного
+- `link` - прямая ссылка на просмотр NFT в боте
 
 ### Покупка NFT
 
@@ -255,6 +282,23 @@ POST /nft/buy
 GET /nft/purchase/status/{transaction_id}
 ```
 
+**Ответ:**
+```json
+{
+  "status": "completed",
+  "data": {
+    "user_id": 123456789,
+    "nft_id": 1,
+    "nft_name": "NFT Мишка",
+    "nft_model": "Bear",
+    "price": 8880.0,
+    "serial_number": 49,
+    "completed_at": 1701234567.123
+  },
+  "success": true
+}
+```
+
 ---
 
 ## 🔄 Передача NFT
@@ -278,6 +322,7 @@ POST /nft/transfer
 **Важно:** 
 - Только владелец может передать NFT
 - Передача требует подтверждения в боте!
+- При передаче `CustomName` NFT кастомное имя также переносится
 
 **Ответ:**
 ```json
@@ -292,6 +337,23 @@ POST /nft/transfer
 
 ```
 GET /nft/transfer/status/{transaction_id}
+```
+
+**Ответ:**
+```json
+{
+  "status": "completed",
+  "data": {
+    "from_user_id": 123456789,
+    "to_user_id": 987654321,
+    "nft_id": 1,
+    "serial_number": 5,
+    "nft_name": "NFT Мишка",
+    "nft_model": "Bear",
+    "completed_at": 1701234567.123
+  },
+  "success": true
+}
 ```
 
 ---
@@ -340,7 +402,7 @@ POST /token/generate                      - Генерация токена (т�
 
 ### 🔐 Безопасность
 - Все запросы требуют валидный JWT токен
-- Токены имеют ограниченный срок действия (по умолчанию 30 дней)
+- Токены имеют ограниченный срок действия (30 дней)
 - Храните токены в безопасном месте
 
 ### 🔄 Подтверждения
@@ -355,8 +417,14 @@ POST /token/generate                      - Генерация токена (т�
 
 ### 🎨 NFT особенности
 - Каждый NFT имеет уникальный серийный номер
-- CustomName NFT переносят кастомные имена
+- `CustomName` NFT позволяют создавать кастомные имена для кошельков
+- При передаче `CustomName` NFT кастомное имя переносится к новому владельцу
 - Проверяйте доступность NFT перед покупкой
+
+### 👤 Кастомные имена
+- Пользователи могут иметь основное и дополнительные кастомные имена
+- Основное имя отображается как кошелек в API
+- Кастомные имена можно передавать через NFT `CustomName`
 
 ---
 
@@ -368,7 +436,7 @@ POST /token/generate                      - Генерация токена (т�
 import requests
 
 # Настройка
-API_URL = "http://localhost:8000"
+API_URL = "http://nyxaro.ru:6666"
 TOKEN = "your_jwt_token_here"
 headers = {"Authorization": f"Bearer {TOKEN}"}
 
@@ -376,6 +444,12 @@ headers = {"Authorization": f"Bearer {TOKEN}"}
 response = requests.get(f"{API_URL}/balance/123456789", headers=headers)
 balance_data = response.json()
 print(f"Баланс: {balance_data['balance']} Ц₽")
+
+# Получение информации о пользователе
+response = requests.get(f"{API_URL}/user/123456789", headers=headers)
+user_data = response.json()
+print(f"Кошелек: {user_data['wallet']}")
+print(f"Кастомные имена: {user_data['custom_names']}")
 
 # Запрос перевода
 transfer_data = {
@@ -388,12 +462,22 @@ response = requests.post(f"{API_URL}/transfer/request",
                         json=transfer_data, headers=headers)
 result = response.json()
 print(f"ID транзакции: {result['transaction_id']}")
+
+# Покупка NFT
+nft_data = {
+    "user_id": 123456789,
+    "nft_id": 1
+}
+response = requests.post(f"{API_URL}/nft/buy", 
+                        json=nft_data, headers=headers)
+result = response.json()
+print(f"ID транзакции покупки: {result['transaction_id']}")
 ```
 
 ### JavaScript с fetch
 
 ```javascript
-const API_URL = "http://localhost:8000";
+const API_URL = "http://nyxaro.ru:6666";
 const TOKEN = "your_jwt_token_here";
 
 // Получение баланса
@@ -405,6 +489,17 @@ async function getBalance(userId) {
     });
     const data = await response.json();
     return data.balance;
+}
+
+// Получение информации о пользователе
+async function getUserInfo(userId) {
+    const response = await fetch(`${API_URL}/user/${userId}`, {
+        headers: {
+            'Authorization': `Bearer ${TOKEN}`
+        }
+    });
+    const data = await response.json();
+    return data;
 }
 
 // Запрос перевода
@@ -424,6 +519,46 @@ async function requestTransfer(fromId, toId, amount, comment) {
     });
     return await response.json();
 }
+
+// Покупка NFT
+async function buyNFT(userId, nftId) {
+    const response = await fetch(`${API_URL}/nft/buy`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${TOKEN}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            user_id: userId,
+            nft_id: nftId
+        })
+    });
+    return await response.json();
+}
+```
+
+### cURL примеры
+
+```bash
+# Получение баланса
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     http://nyxaro.ru:6666/balance/123456789
+
+# Получение информации о пользователе
+curl -H "Authorization: Bearer YOUR_TOKEN" \
+     http://nyxaro.ru:6666/user/123456789
+
+# Запрос перевода
+curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"from_user_id": 123456789, "to_user_id": 987654321, "amount": 500.0, "comment": "Тест"}' \
+     http://nyxaro.ru:6666/transfer/request
+
+# Покупка NFT
+curl -X POST -H "Authorization: Bearer YOUR_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"user_id": 123456789, "nft_id": 1}' \
+     http://nyxaro.ru:6666/nft/buy
 ```
 
 ---
@@ -454,6 +589,8 @@ except requests.exceptions.HTTPError as e:
         print("❌ Пользователь не найден")
     else:
         print(f"❌ Ошибка HTTP: {e}")
+except requests.exceptions.ConnectionError as e:
+    print(f"❌ Ошибка подключения к серверу: {e}")
 except Exception as e:
     print(f"❌ Ошибка: {e}")
 ```
@@ -465,8 +602,16 @@ except Exception as e:
 Если у вас возникли вопросы или проблемы:
 
 1. Проверьте правильность токена
-2. Убедитесь, что API сервер запущен
+2. Убедитесь, что API сервер запущен на `nyxaro.ru:6666`
 3. Проверьте формат запросов
-4. Обратитесь к администратору бота
+4. Обратитесь к @lobby на тестовом сервере Telegram
 
 ---
+
+## 🔄 Обновления API
+
+API может обновляться. Следите за изменениями в документации и обновляйте ваши интеграции при необходимости.
+
+**Версия API:** 1.0.0  
+**Последнее обновление:** Июль 2025  
+**Сервер:** `nyxaro.ru:6666` 
